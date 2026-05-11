@@ -1,0 +1,104 @@
+<div class="chat-wrapper">
+  <header class="chat-header">
+    <div class="content-inner">
+      <h1>Research Assistant</h1>
+      <p>Задайте вопрос — ассистент найдёт актуальную информацию</p>
+    </div>
+  </header>
+
+  <div class="messages-container">
+    <div class="content-inner">
+      <section *ngIf="messages().length === 0 && !loading()" class="empty-state">
+        <h2>Привет! Я Research Assistant</h2>
+        <p>
+          Помогаю быстро находить и структурировать актуальную информацию.
+        </p>
+        <p class="empty-hint">
+          Первый шаг: задайте тему в поле ниже, например:
+          <span class="hint-example">«Что нового в локальных LLM за неделю?»</span>
+        </p>
+      </section>
+
+      <div
+        *ngFor="let msg of messages()"
+        class="message"
+        [class.user]="msg.role === 'user'"
+        [class.assistant]="msg.role === 'assistant'"
+      >
+        <div class="message-label">
+          {{ msg.role === 'user' ? 'Вы' : 'AI' }}
+        </div>
+        <div class="message-body">
+          <ng-container *ngIf="getNewsItems(msg) as newsItems; else defaultMessage">
+            <div *ngIf="getWarning(msg) as warning" class="news-warning">
+              {{ warning }}
+            </div>
+            <div class="news-list">
+              <article
+                *ngFor="let item of newsItems; trackBy: trackByNewsLink"
+                class="news-item"
+              >
+                <a
+                  class="news-title"
+                  [href]="item.link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ item.title }}
+                </a>
+                <div class="news-meta">
+                  <span>{{ item.source }}</span>
+                  <span>•</span>
+                  <span>{{ item.date }}</span>
+                </div>
+                <p class="news-snippet">{{ item.snippet }}</p>
+              </article>
+            </div>
+          </ng-container>
+          <ng-template #defaultMessage>
+            <markdown [data]="msg.content" />
+          </ng-template>
+        </div>
+        <div *ngIf="getMessageMeta(msg).length" class="message-meta">
+          <span *ngFor="let item of getMessageMeta(msg)">
+            {{ item }}
+          </span>
+        </div>
+      </div>
+
+      <div *ngIf="loading()" class="message assistant loading-msg">
+        <div class="message-label">AI</div>
+        <div class="message-body">
+          <div class="live-status">{{ activeStage() }}</div>
+          <div class="wait-timer">Ожидание: {{ formatWaitingSeconds(waitingMs()) }}с</div>
+          <ng-container *ngIf="streamingText(); else waitingLoader">
+            <markdown [data]="streamingText()" />
+          </ng-container>
+          <ng-template #waitingLoader>
+            <span class="dot-flashing"></span>
+          </ng-template>
+        </div>
+      </div>
+
+      <div *ngIf="error()" class="error-banner">{{ error() }}</div>
+
+      <div #messagesEnd></div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="content-inner">
+      <textarea
+        [ngModel]="input()"
+        (ngModelChange)="input.set($event)"
+        (keydown)="onKeydown($event)"
+        placeholder="Введите вопрос... (Enter — отправить, Shift+Enter — новая строка)"
+        rows="3"
+        [disabled]="loading()"
+      ></textarea>
+      <button (click)="send()" [disabled]="loading() || !input().trim()">
+        {{ loading() ? 'Думает...' : 'Отправить' }}
+      </button>
+    </div>
+  </div>
+</div>
